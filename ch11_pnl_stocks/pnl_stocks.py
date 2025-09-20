@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class StockCosts:
-    commission_per_share: float = 0.00     # e.g., 0.005 if your broker charges per share
+    commission_per_share: float = 0.00     # e.g., 0.005
     slippage_per_share_rt: float = 0.02    # round-trip slippage (total)
 
 def ask_float(prompt: str, default: float | None = None) -> float:
@@ -43,6 +43,12 @@ def pnl_stocks(entry: float, exit: float, shares: int, side: str, costs: StockCo
     costs_total = shares * (costs.commission_per_share + costs.slippage_per_share_rt)
     return round(gross - costs_total, 2)
 
+def net_per_share(entry: float, exit: float, side: str, costs: StockCosts) -> float:
+    sign = 1 if side == "long" else -1
+    gross = sign * (exit - entry)
+    per_share_costs = costs.commission_per_share + costs.slippage_per_share_rt
+    return round(gross - per_share_costs, 2)
+
 def main():
     print("=== STOCKS/ETF P&L ===")
     entry = ask_float("Entry (buy) price")
@@ -54,13 +60,15 @@ def main():
     slippage_rt = ask_float("Round-trip slippage per share", default=0.02)
 
     costs = StockCosts(commission_per_share=commission, slippage_per_share_rt=slippage_rt)
-    pnl = pnl_stocks(entry, exit_, shares, side, costs)
+    per_share = net_per_share(entry, exit_, side, costs)
+    total = pnl_stocks(entry, exit_, shares, side, costs)
 
-    print("\n--- RESULT ---")
+    print("\n--- RESULT (STOCKS) ---")
     print(f"Side: {side.upper()}  Shares: {shares}")
     print(f"Entry: {entry:.4f}  Exit: {exit_:.4f}")
     print(f"Costs: commission/share=${commission:.4f}, slippage RT/share=${slippage_rt:.4f}")
-    print(f"Net P&L: ${pnl:.2f}")
+    print(f"P&L per share: ${per_share:.2f}")
+    print(f"P&L total:     ${total:.2f}")
 
 if __name__ == "__main__":
     main()

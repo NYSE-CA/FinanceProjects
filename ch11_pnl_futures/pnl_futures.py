@@ -71,6 +71,14 @@ def pnl_futures(entry: float, exit: float, side: str, spec: ContractSpec, fees: 
     costs = round_trip_fees(fees, spec.contracts) + (slippage_ticks_rt * spec.dollars_per_tick * spec.contracts)
     return round(gross - costs, 2)
 
+def net_per_contract(entry: float, exit: float, side: str, spec: ContractSpec, fees: FuturesFees, slippage_ticks_rt: float) -> float:
+    sign = 1 if side == "long" else -1
+    ticks_per_point = 1.0 / spec.tick_size
+    gross = sign * (exit - entry) * ticks_per_point * spec.dollars_per_tick
+    rt_fees_one = round_trip_fees(fees, 1)
+    slip_usd_one = slippage_ticks_rt * spec.dollars_per_tick
+    return round(gross - rt_fees_one - slip_usd_one, 2)
+
 def main():
     print("=== FUTURES P&L (MES / Tradovate) ===")
     entry = ask_float("Entry price")
@@ -78,34 +86,31 @@ def main():
     side = ask_side()
     contracts = ask_int("Number of contracts", default=1)
 
-    # Plan yes/no: No-Commission membership?
     has_no_commission = ask_yes_no('Do you have the "No Commission Membership"?', default_yes=False)
 
-    # Defaults (MES)
     spec = ContractSpec(contracts=contracts)
-
-    # Fees per plan
     if has_no_commission:
         fees = FuturesFees(commission_per_side=0.00)
         plan_label = "No Commission Membership"
     else:
-        fees = FuturesFees()  # Free plan with commission
+        fees = FuturesFees()
         plan_label = "Free plan (commissioned)"
 
     slippage_ticks_rt = ask_float("Round-trip slippage (ticks)", default=1.0)
 
-    pnl = pnl_futures(entry, exit_, side, spec, fees, slippage_ticks_rt)
-
+    total = pnl_futures(entry, exit_, side, spec, fees, slippage_ticks_rt)
+    per_ct = net_per_contract(entry, exit_, side, spec, fees, slippage_ticks_rt)
     rt_fees = round(round_trip_fees(fees, contracts), 2)
     slip_usd = slippage_ticks_rt * spec.dollars_per_tick * contracts
 
-    print("\n--- RESULT ---")
+    print("\n--- RESULT (FUTURES) ---")
     print(f"Contract: MES   Side: {side.upper()}  Contracts: {contracts}")
     print(f"Entry: {entry:.2f}  Exit: {exit_:.2f}  Tick: {spec.tick_size}  $/tick: {spec.dollars_per_tick}")
     print(f"Plan: {plan_label}")
     print(f"Fees RT (exch+clr+nfa+comm): ${rt_fees:.2f}")
-    print(f"Slippage RT: {slippage_ticks_rt} ticks  (= ${slip_usd:.2f})")
-    print(f"Net P&L: ${pnl:.2f}")
+    print(f"Slippage RT: {slippage_ticks_rt} ticks (= ${slip_usd:.2f})")
+    print(f"P&L per contract: ${per_ct:.2f}")
+    print(f"P&L total:        ${total:.2f}")
 
 if __name__ == "__main__":
     main()
