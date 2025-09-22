@@ -1,0 +1,13 @@
+[project]
+name = "posagg"
+version = "0.1.0"
+description = "Position Aggregator (avg price, realized P&L, optional UPL)"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.scripts]
+posagg = "posagg.cli:main"
+
+[project.optional-dependencies]
+tradovate = ["websockets>=12.0"]
+
